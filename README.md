@@ -11,58 +11,93 @@ To write a python program for creating File Transfer using TCP Sockets Links
 CLIENT:
 ```
 import socket
-s = socket.socket()
-host = socket.gethostname()
-port = 60000
-s.connect((host, port))
-s.send("Hello server!".encode())
-with open('received_file', 'wb') as f:
- while True:
- print('receiving data...')
- data = s.recv(1024)
- print('data=%s', (data))
- if not data:
- break
- f.write(data)
-f.close()
-print('Successfully get the file')
-s.close()
-print('connection closed')
+
+def receive_file(filename, server_socket):
+    try:
+        # Open the file to write in binary mode
+        with open(filename, 'wb') as file:
+            while True:
+                data = server_socket.recv(1024)  # Receive data from server in chunks
+                if not data:
+                    # If no data is received, it means the server closed the connection
+                    break
+                file.write(data)  # Write received data to the file
+    except Exception as e:
+        print(f"Error while receiving file: {e}")
+    finally:
+        server_socket.close()  # Ensure the socket is closed
+
+def start_client():
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create TCP socket
+
+    try:
+        client_socket.connect(('127.0.0.1', 5555))  # Connect to the server
+
+        filename = input("Enter filename to save: ")
+        client_socket.sendall(filename.encode())  # Send the filename to the server
+
+        receive_file(filename, client_socket)  # Receive file from server
+        print(f"File '{filename}' received successfully")
+
+    except ConnectionAbortedError:
+        print("Connection was aborted by the server.")
+    except ConnectionRefusedError:
+        print("Could not connect to the server. Ensure the server is running.")
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+    finally:
+        client_socket.close()  # Ensure the client socket is closed
+
+start_client()
+
 ```
 
 SERVER:
 ```
-import socket 
-port = 60000 
-s = socket.socket() 
-host = socket.gethostname() 
-s.bind((host, port)) 
-s.listen(5) 
-while True:
- conn, addr = s.accept() 
- data = conn.recv(1024)
- print('Server received', repr(data))
- filename='mytext.txt'
- f = open(filename,'rb')
- l = f.read(1024)
- while (l):
- conn.send(l)
- print('Sent ',repr(l))
- l = f.read(1024)
- f.close()
- print('Done sending')
- conn.send('Thank you for connecting'.encode())
- conn.close()
+import socket
+
+def send_file(filename, client_socket):
+    try:
+        # Open the file in binary mode for reading
+        with open(filename, 'rb') as file:
+            # Send file data in chunks
+            for data in file:
+                client_socket.sendall(data)  # Send data to the client
+        print(f"File '{filename}' sent successfully")
+    except FileNotFoundError:
+        print(f"File '{filename}' not found")
+    except Exception as e:
+        print(f"Error while sending file: {e}")
+    finally:
+        client_socket.close()  # Ensure the client socket is closed after sending
+
+def start_server():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create TCP socket
+    server_socket.bind(('127.0.0.1', 5555))  # Bind the socket to a local address and port
+    server_socket.listen(5)  # Listen for incoming connections (up to 5 clients)
+    print("Server started, listening on port 5555")
+
+    while True:
+        try:
+            client_socket, addr = server_socket.accept()  # Accept incoming client connection
+            print(f"Accepted connection from {addr}")
+
+            filename = input("Enter filename to send: ")  # Prompt for the file to send
+            send_file(filename, client_socket)  # Send the file to the connected client
+
+        except Exception as e:
+            print(f"Error: {e}")
+        finally:
+            client_socket.close()  # Ensure the client socket is closed even in case of an error
+
+start_server()
+
 ```
 
 
 
 ## OUPUT
-CLIENT OUTPUT
-![image](https://github.com/user-attachments/assets/99e3d35a-aef1-4ae3-badd-2cb4d5f1978e)
-
-SERVER OUTPUT
-![image](https://github.com/user-attachments/assets/73c963c3-fd07-4fe1-9606-21ecaf4ad54b)
+![Screenshot (59)](https://github.com/user-attachments/assets/91673582-185f-462e-960f-6a2662fb1d3d)
 
 
 ## RESULT
